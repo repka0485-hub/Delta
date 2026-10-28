@@ -100,3 +100,46 @@ bool poll_touch(float* x, float* y, bool* down) {
     *x = g_x; *y = g_y; *down = g_down;
     return g_have;
 }
+
+// ---------------------------------------------------------------------------
+// create_overlay_window: бэкенд окна ещё не написан (нужны реальные символы libgui
+// с этого телефона). Пока бинарь сохраняет их в /data/local/tmp/libgui_syms.txt.
+// ---------------------------------------------------------------------------
+#include <cstring>
+#include <set>
+#include <string>
+
+static void dump_gui_symbols() {
+    static const char* paths[] = { "/system/lib64/libgui.so", "/system_ext/lib64/libgui.so", nullptr };
+    static const char* prefixes[] = { "_ZN7android21SurfaceComposerClient", "_ZN7android14SurfaceControl",
+                                      "_ZN7android7Surface", nullptr };
+    std::set<std::string> out;
+    for (const char* const* p = paths; *p; ++p) {
+        FILE* f = fopen(*p, "rb");
+        if (!f) continue;
+        std::string buf;
+        char tmp[65536]; size_t n;
+        while ((n = fread(tmp, 1, sizeof tmp, f)) > 0) buf.append(tmp, n);
+        fclose(f);
+        for (const char* const* pre = prefixes; *pre; ++pre) {
+            size_t pos = 0, plen = strlen(*pre);
+            while ((pos = buf.find(*pre, pos)) != std::string::npos) {
+                if (pos == 0 || buf[pos - 1] == '\0') out.insert(std::string(buf.c_str() + pos));
+                pos += plen;
+            }
+        }
+        if (!out.empty()) break;
+    }
+    FILE* o = fopen("/data/local/tmp/libgui_syms.txt", "w");
+    if (!o) return;
+    for (const auto& s : out) fprintf(o, "%s\n", s.c_str());
+    fclose(o);
+    fprintf(stderr, "libgui symbols: %zu -> /data/local/tmp/libgui_syms.txt\n", out.size());
+}
+
+ANativeWindow* create_overlay_window(int* w, int* h) {
+    (void)w; (void)h;
+    dump_gui_symbols();
+    fprintf(stderr, "overlay window backend not implemented yet, send libgui_syms.txt\n");
+    return nullptr;
+}
