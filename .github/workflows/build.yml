@@ -10,15 +10,19 @@ on:
 env:
   ABI: arm64-v8a
   API: 26
-  TARGET: esp            # FILL: имя таргета в CMakeLists
+  TARGET: esp
+  IMGUI_TAG: v1.92.0
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: ImGui
+        run: |
+          git clone --depth 1 --branch "$IMGUI_TAG" https://github.com/ocornut/imgui "$RUNNER_TEMP/imgui"
+          test -f "$RUNNER_TEMP/imgui/imgui.cpp"
 
       - name: NDK
         run: |
@@ -33,6 +37,7 @@ jobs:
           -DANDROID_PLATFORM=android-$API
           -DANDROID_STL=c++_static
           -DCMAKE_BUILD_TYPE=Release
+          -DIMGUI_DIR=$RUNNER_TEMP/imgui
           -DCMAKE_CXX_FLAGS_RELEASE="-O2 -fvisibility=hidden"
           -DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections -Wl,--strip-all"
 
@@ -43,7 +48,7 @@ jobs:
         run: |
           mkdir -p out
           cp build/$TARGET out/
-          cp run.sh out/ 2>/dev/null || true
+          cp run.sh logo.png out/ 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
         with:
